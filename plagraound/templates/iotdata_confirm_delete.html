@@ -1,0 +1,7 @@
+<h1>Delete IoT Data</h1>
+<p>Are you sure you want to delete "{{ object }}"?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Confirm</button>
+</form>
+<a href="{% url 'iotdata-list' %}">Cancel</a>

@@ -1,0 +1,11 @@
+<h1>IoT Data List</h1>
+<a href="{% url 'iotdata-create' %}">Create New</a>
+<ul>
+    {% for data in iotdata_list %}
+        <li>
+            <a href="{% url 'iotdata-detail' data.pk %}">{{ data }}</a>
+            <a href="{% url 'iotdata-update' data.pk %}">Edit</a>
+            <a href="{% url 'iotdata-delete' data.pk %}">Delete</a>
+        </li>
+    {% endfor %}
+</ul>

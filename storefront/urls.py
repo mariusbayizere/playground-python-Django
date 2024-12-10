@@ -19,5 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('plagraound/', include('plagraound.urls'))
+    path('plagraound/', include('plagraound.urls')),
+    path('iot/', include('plagraound.urls')), 
+    # path('iot/', include('iot.urls')), 
 ]

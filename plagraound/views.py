@@ -177,6 +177,47 @@ def iot_data_list(request):
 
 
 
+# @login_required
+# def create_anomaly_log(request):
+#     if request.method == 'POST':
+#         # Get form data
+#         iot_data_id = request.POST.get('iot_data')
+#         severity = request.POST.get('severity')
+#         resolved = request.POST.get('resolved') == 'on'  # Checkbox value
+#         resolution_conversation_id = request.POST.get('resolution_conversation')
+
+#         # Validate IoTData foreign key
+#         try:
+#             iot_data = IoTData.objects.get(id=iot_data_id)
+#         except IoTData.DoesNotExist:
+#             return JsonResponse({'error': 'IoTData not found'}, status=400)
+
+#         # Validate severity
+#         if severity not in ['low', 'medium', 'high']:
+#             return JsonResponse({'error': 'Invalid severity level'}, status=400)
+
+#         # Validate resolution conversation foreign key (optional)
+#         resolution_conversation = None
+#         if resolution_conversation_id:
+#             try:
+#                 resolution_conversation = Conversation.objects.get(id=resolution_conversation_id)
+#             except Conversation.DoesNotExist:
+#                 return JsonResponse({'error': 'Resolution conversation not found'}, status=400)
+
+#         # Create and save the anomaly log
+#         AnomalyLog.objects.create(
+#             iot_data=iot_data,
+#             severity=severity,
+#             resolved=resolved,
+#             resolution_conversation=resolution_conversation
+#         )
+#         return JsonResponse({'success': 'Anomaly log created successfully'}, status=200)
+
+#     # Render the form template
+#     return render(request, 'create_anomaly_log.html')
+
+
+
 @login_required
 def create_anomaly_log(request):
     if request.method == 'POST':
@@ -190,11 +231,11 @@ def create_anomaly_log(request):
         try:
             iot_data = IoTData.objects.get(id=iot_data_id)
         except IoTData.DoesNotExist:
-            return JsonResponse({'error': 'IoTData not found'}, status=400)
+            return render(request, 'create_anomaly_log.html', {'error': 'IoTData not found'})
 
         # Validate severity
         if severity not in ['low', 'medium', 'high']:
-            return JsonResponse({'error': 'Invalid severity level'}, status=400)
+            return render(request, 'create_anomaly_log.html', {'error': 'Invalid severity level'})
 
         # Validate resolution conversation foreign key (optional)
         resolution_conversation = None
@@ -202,47 +243,65 @@ def create_anomaly_log(request):
             try:
                 resolution_conversation = Conversation.objects.get(id=resolution_conversation_id)
             except Conversation.DoesNotExist:
-                return JsonResponse({'error': 'Resolution conversation not found'}, status=400)
+                return render(request, 'create_anomaly_log.html', {'error': 'Resolution conversation not found'})
 
-        # Create and save the anomaly log
         AnomalyLog.objects.create(
             iot_data=iot_data,
             severity=severity,
             resolved=resolved,
             resolution_conversation=resolution_conversation
         )
-        return JsonResponse({'success': 'Anomaly log created successfully'}, status=200)
+
+        # Use messages to display success
+        messages.success(request, 'Anomaly log created successfully')
+
+        return redirect('iot:create_anomaly_log')  # Include namespace in the redirect
 
     # Render the form template
     return render(request, 'create_anomaly_log.html')
 
-# @login_required
-# def update_iot_data(request, id):
-#     iot_data = get_object_or_404(IoTData, id=id, user=request.user)
-
-#     if request.method == 'POST':
-#         sensor_data = request.POST.get('sensor_data', '').strip()
-#         prediction = request.POST.get('prediction')
-#         notes = request.POST.get('notes')
-
-#         # Validate JSON data
-#         try:
-#             sensor_data_json = json.loads(sensor_data) if sensor_data else {}
-#         except json.JSONDecodeError:
-#             return JsonResponse({'error': 'Invalid JSON format for sensor_data'}, status=400)
-
-#         # Update the data
-#         iot_data.sensor_data = sensor_data_json
-#         iot_data.prediction = prediction
-#         iot_data.notes = notes
-#         iot_data.save()
-
-#         return render(request, 'iotdata_detail.html', {'iot_data': iot_data})
-
-#     return render(request, 'update_iot_data.html', {'iot_data': iot_data})
 
 
-class IoTDataDeleteView(DeleteView):
-    model = IoTData
-    template_name = "iotdata_confirm_delete.html"
-    success_url = reverse_lazy("iotdata-list")
+@login_required
+def update_anomaly_log(request, id):
+    anomaly_log = get_object_or_404(AnomalyLog, id=id)  # Retrieve the anomaly log or raise 404 if not found
+    
+    if request.method == 'POST':
+        # Get updated data from the form
+        iot_data_id = request.POST.get('iot_data')
+        severity = request.POST.get('severity')
+        resolved = request.POST.get('resolved') == 'on'  # Checkbox value
+        resolution_conversation_id = request.POST.get('resolution_conversation')
+
+        # Validate IoTData foreign key
+        try:
+            iot_data = IoTData.objects.get(id=iot_data_id)
+        except IoTData.DoesNotExist:
+            return render(request, 'update_anomaly_log.html', {'error': 'IoTData not found', 'anomaly_log': anomaly_log})
+
+        # Validate severity
+        if severity not in ['low', 'medium', 'high']:
+            return render(request, 'update_anomaly_log.html', {'error': 'Invalid severity level', 'anomaly_log': anomaly_log})
+
+        # Validate resolution conversation foreign key (optional)
+        resolution_conversation = None
+        if resolution_conversation_id:
+            try:
+                resolution_conversation = Conversation.objects.get(id=resolution_conversation_id)
+            except Conversation.DoesNotExist:
+                return render(request, 'update_anomaly_log.html', {'error': 'Resolution conversation not found', 'anomaly_log': anomaly_log})
+
+        # Update the anomaly log
+        anomaly_log.iot_data = iot_data
+        anomaly_log.severity = severity
+        anomaly_log.resolved = resolved
+        anomaly_log.resolution_conversation = resolution_conversation
+        anomaly_log.save()
+
+        # Use messages to display success
+        messages.success(request, 'Anomaly log updated successfully')
+
+        return redirect('iot:update_anomaly_log', id=id)  # Redirect to the same page to show the success message
+
+    # Render the form template with the current data
+    return render(request, 'update_anomaly_log.html', {'anomaly_log': anomaly_log})

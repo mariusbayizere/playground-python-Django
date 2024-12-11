@@ -1,3 +1,4 @@
+from .models import Message, Conversation
 from django import forms
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseForbidden
@@ -305,3 +306,173 @@ def update_anomaly_log(request, id):
 
     # Render the form template with the current data
     return render(request, 'update_anomaly_log.html', {'anomaly_log': anomaly_log})
+
+
+from django.http import Http404
+
+@login_required
+def delete_anomaly_log(request, id):
+    anomaly_log = get_object_or_404(AnomalyLog, id=id)
+    if request.method == 'POST':
+        anomaly_log.delete()
+        messages.success(request, 'Anomaly log deleted successfully.')
+        return redirect('iot:iot_data_list')
+    return render(request, 'delete_anomaly_log.html', {'anomaly_log': anomaly_log})
+
+
+@login_required
+def list_anomaly_logs(request):
+    """
+    View to display all anomaly logs in a table.
+    """
+    anomaly_logs = AnomalyLog.objects.all().order_by('-detected_at')  # Order by the most recent
+    return render(request, 'list_anomaly_logs.html', {'anomaly_logs': anomaly_logs})
+
+@login_required
+def create_conversation(request):
+    """
+    View to create a new conversation entry.
+    """
+    if request.method == 'POST':
+        # Get form data
+        user = request.user
+        ended_at = request.POST.get('ended_at')
+        is_active = request.POST.get('is_active') == 'on'  # Checkbox value
+
+        # Convert ended_at to datetime if provided
+        ended_at_datetime = None
+        if ended_at:
+            try:
+                ended_at_datetime = now() if ended_at.lower() == "now" else ended_at
+            except ValueError:
+                return render(request, 'create_conversation.html', {'error': 'Invalid end date format'})
+
+        # Create the conversation entry
+        Conversation.objects.create(
+            user=user,
+            ended_at=ended_at_datetime,
+            is_active=is_active
+        )
+
+        # Success message
+        messages.success(request, 'Conversation created successfully!')
+        return redirect('iot:create_conversation')
+
+    return render(request, 'create_conversation.html')
+
+
+@login_required
+def delete_conversation(request, conversation_id):
+    """
+    View to delete a conversation entry.
+    """
+    conversation = get_object_or_404(Conversation, id=conversation_id, user=request.user)
+
+    if request.method == 'POST':
+        conversation.delete()
+
+        messages.success(request, 'Conversation deleted successfully!')
+        # return redirect('iot:delete_conversation')
+        return render(request, 'delete_conversation.html')
+        
+
+    return render(request, 'delete_conversation.html', {'conversation': conversation})
+
+
+
+@login_required
+def create_message(request):
+    if request.method == 'POST':
+        # Get form data
+        conversation_id = request.POST.get('conversation')
+        sender = request.POST.get('sender')
+        message_content = request.POST.get('message_content')
+
+        # Validate Conversation foreign key
+        try:
+            conversation = Conversation.objects.get(id=conversation_id, user=request.user)
+        except Conversation.DoesNotExist:
+            return render(request, 'create_message.html', {'error': 'Conversation not found or access denied'})
+
+        # Validate sender
+        if sender not in ['user', 'chatbot']:
+            return render(request, 'create_message.html', {'error': 'Invalid sender value'})
+
+        # Create the message
+        Message.objects.create(
+            conversation=conversation,
+            sender=sender,
+            message_content=message_content
+        )
+
+        # Display success message
+        messages.success(request, 'Message created successfully!')
+
+        return redirect('iot:create_message')  # Replace with your namespace and URL name
+
+    # Render the form template
+    return render(request, 'create_message.html')
+
+
+
+@login_required
+def update_message(request, message_id):
+    # Retrieve the message
+    message = get_object_or_404(Message, id=message_id)
+
+    if request.method == 'POST':
+        # Get form data
+        conversation_id = request.POST.get('conversation')
+        sender = request.POST.get('sender')
+        message_content = request.POST.get('message_content')
+
+        # Validate Conversation foreign key
+        try:
+            conversation = Conversation.objects.get(id=conversation_id, user=request.user)
+        except Conversation.DoesNotExist:
+            return render(request, 'update_message.html', {'error': 'Conversation not found or access denied', 'message': message})
+
+        # Validate sender
+        if sender not in ['user', 'chatbot']:
+            return render(request, 'update_message.html', {'error': 'Invalid sender value', 'message': message})
+
+        # Update the message
+        message.conversation = conversation
+        message.sender = sender
+        message.message_content = message_content
+        message.save()
+
+        # Display success message
+        messages.success(request, 'Message updated successfully!')
+
+        return redirect('iot:update_message', message_id=message.id)
+
+    return render(request, 'update_message.html', {'message': message})
+
+
+
+@login_required
+def delete_message(request, message_id):
+    # Retrieve the message
+    message = get_object_or_404(Message, id=message_id)
+
+    if request.method == 'POST':
+
+        message.delete()
+
+        messages.success(request, 'Message deleted successfully!')
+
+        return redirect('iot:create_message')  
+
+   
+    return render(request, 'delete_message.html', {'message': message})
+
+
+@login_required
+def list_messages(request):
+    messages_list = Message.objects.filter(conversation__user=request.user).select_related('conversation').order_by('-sent_at')
+
+    return render(request, 'list_messages.html', {'messages': messages_list})
+
+
+

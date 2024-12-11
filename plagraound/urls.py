@@ -31,7 +31,6 @@ urlpatterns = [
     path("signup/", signup, name="signup"),
     path('login/', LoginView.as_view(template_name='login.html'), name='login'),
     path('update-anomaly-log/<int:id>/', update_anomaly_log, name='update_anomaly_log'),
-    # path('delete-anomaly-log/<int:id>/', delete_anomaly_log, name='delete_anomaly_log'),
     path('delete-anomaly-log/<int:id>/', delete_anomaly_log, name='delete_anomaly_log'),
     path('anomaly-logs/', list_anomaly_logs, name='list_anomaly_logs'),
     path('conversation/create/', create_conversation, name='create_conversation'),
